@@ -35,7 +35,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * Relative Stability: Pegged to USD
  *
  * This is the contract meant to be geverned by DSCEngine. This contract is just the ERC20 implementation of our stablecoin system
- *
+ * test
  */
 contract DecentralizedStableCoin is ERC20Burnable, Ownable {
     error DecentralizedStableCoin__MustBeMoreThanZero();
