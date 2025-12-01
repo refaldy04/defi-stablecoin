@@ -182,7 +182,7 @@ contract SDCEngine is ReentrancyGuard {
         // total collateral VALUE
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        // $150 ETH / 100 DSC = 1.5 health factor
+        // $150 ETH / 100 DSC = 1.5 health factor // ini perbandingan collateral vs dsc minted
         // 150 * 50 = 7500 / 100 = (75 / 100) < 1
 
         // $1000 ETH / 100 DSC
