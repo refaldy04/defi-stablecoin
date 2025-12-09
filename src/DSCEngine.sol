@@ -46,12 +46,12 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
  * @notice This contract is VERY loosely based on the MakerDAO DSS (DAI) system.
  *
  */
-contract SDCEngine is ReentrancyGuard {
+contract DSCEngine is ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
-    error SDCEngine__NeedsMoreThanZero();
-    error SDCEngine__TokenAddressAndPriceFeedAddressLengthMustBeSameLength();
+    error DSCEngine__NeedsMoreThanZero();
+    error DSCEngine__TokenAddressAndPriceFeedAddressLengthMustBeSameLength();
     error DSCEngine__NotAllowedToken();
     error DSCEngine__TransferFailed();
     error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
@@ -83,7 +83,7 @@ contract SDCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) {
-            revert SDCEngine__NeedsMoreThanZero();
+            revert DSCEngine__NeedsMoreThanZero();
         }
         _;
     }
@@ -101,7 +101,7 @@ contract SDCEngine is ReentrancyGuard {
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress) {
         // USD Price Feeds
         if (tokenAddresses.length != priceFeedAddresses.length) {
-            revert SDCEngine__TokenAddressAndPriceFeedAddressLengthMustBeSameLength();
+            revert DSCEngine__TokenAddressAndPriceFeedAddressLengthMustBeSameLength();
         }
         // For example ETH / USD, BTC / USD, MKR / USD, etc
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
@@ -149,7 +149,7 @@ contract SDCEngine is ReentrancyGuard {
         s_DSCMinted[msg.sender] += amountDscToMint;
         // if they minted to much ($150 DSC, $100 ETH)
         _revertIfHealthFactorIsBroken(msg.sender);
-        bool minted = i_dsc.mint(msg.sender, amountDscToMint)
+        bool minted = i_dsc.mint(msg.sender, amountDscToMint);
         if (!minted) {
             revert DSCEngine__MintFailed();
         }
