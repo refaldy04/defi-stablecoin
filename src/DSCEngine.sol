@@ -56,6 +56,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__TransferFailed();
     error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
     error DSCEngine__MintFailed();
+    error DSCEngine__HealthFactorOk();
 
     /*//////////////////////////////////////////////////////////////
                                 STATE VARIABLES
@@ -64,7 +65,8 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200% overcollateralized
     uint256 private constant LIQUIDATION_PRECISION = 100;
-    uint256 private constant MIN_HEALTH_FACTOR = 1;
+    uint256 private constant LIQUIDATION_BONUS = 10;
+    uint256 private constant MIN_HEALTH_FACTOR = 1e18;
 
     mapping(address token => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
@@ -204,12 +206,40 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function liquidate() external {}
+    /*
+    * @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again
+    * This is collateral that you're going to take from the user who is insolvent.
+    * In return, you have to burn your DSC to pay off their debt, but you don't pay off your own.
+    * @param user: The user who is insolvent. They have to have a _healthFactor below MIN_HEALTH_FACTOR
+    * @param debtToCover: The amount of DSC you want to burn to cover the user's debt.
+    *
+    * @notice: You can partially liquidate a user.
+    * @notice: You will get a 10% LIQUIDATION_BONUS for taking the users funds.
+    * @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this to work.
+    * @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate anyone.
+    * For example, if the price of the collateral plummeted before anyone could be liquidated.
+    */
+    function liquidate(address collateral, address user, uint256 debtToCover)
+        external
+        moreThanZero(debtToCover)
+        nonReentrant
+    {
+        uint256 startingUserHealthFactor = _healthFactor(user);
+        if (startingUserHealthFactor > MIN_HEALTH_FACTOR) {
+            revert DSCEngine__HealthFactorOk();
+        }
+
+        uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(collateral, debtToCover);
+
+        uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
+
+        uint256 totalCollateralRedeemed = tokenAmountFromDebtCovered + bonusCollateral;
+    }
 
     function getHealthFactor() external view {}
 
     /*//////////////////////////////////////////////////////////////
-                        PRIVATE & INTERNAL VIEW FUNCTIONS
+                    PRIVATE & INTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
     function _getAccountInformation(address user)
         private
@@ -228,7 +258,7 @@ contract DSCEngine is ReentrancyGuard {
         // total DSC minted
         // total collateral VALUE
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION; // ini dibagi 50%
         // $150 ETH / 100 DSC = 1.5 health factor // ini perbandingan collateral vs dsc minted
         // 150 * 50 = 7500 / 100 = (75 / 100) < 1
 
@@ -249,6 +279,13 @@ contract DSCEngine is ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                     PUBLIC & EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+    function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+
+        return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
+    }
+
     function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUsd) {
         // loop through each collateral token, get the amount they have deposited, and map it to the price, to get USD value
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
