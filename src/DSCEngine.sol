@@ -287,13 +287,17 @@ contract DSCEngine is ReentrancyGuard {
         // total DSC minted
         // total collateral VALUE
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        if (totalDscMinted == 0) {
+            return type(uint256).max;
+        }
+
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION; // ini dibagi 50%
         // $150 ETH / 100 DSC = 1.5 health factor // ini perbandingan collateral vs dsc minted
         // 150 * 50 = 7500 / 100 = (75 / 100) < 1
 
         // $1000 ETH / 100 DSC
         // 1000 * 50 = 50000 / 100 = (500 / 100) > 1
-        return (collateralAdjustedForThreshold * LIQUIDATION_PRECISION) / totalDscMinted;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
     // 1. Check health factor (do they have enough collateral?)
@@ -331,5 +335,25 @@ contract DSCEngine is ReentrancyGuard {
         // 1 ETH = $1000
         // The returned value from CL will be 1000 * 1e8
         return (uint256(price) * ADDITIONAL_FEED_PRECISION * amount) / PRECISION;
+    }
+
+    function getAccountInformation(address user)
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function getPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
+
+    function getCollateralToken(uint256 index) external view returns (address) {
+        return s_collateralTokens[index];
+    }
+
+    function getDsc() external view returns (DecentralizedStableCoin) {
+        return i_dsc;
     }
 }
