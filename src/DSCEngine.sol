@@ -240,7 +240,9 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(user);
     }
 
-    function getHealthFactor() external view {}
+    function getHealthFactor() external view {
+        _healthFactor(msg.sender);
+    }
 
     /*//////////////////////////////////////////////////////////////
                     PRIVATE & INTERNAL VIEW FUNCTIONS
@@ -351,6 +353,10 @@ contract DSCEngine is ReentrancyGuard {
 
     function getCollateralToken(uint256 index) external view returns (address) {
         return s_collateralTokens[index];
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
     }
 
     function getDsc() external view returns (DecentralizedStableCoin) {
