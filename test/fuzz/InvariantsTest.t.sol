@@ -50,7 +50,43 @@ contract InvariantsTest is StdInvariant, Test {
         console.log("Total Supply DSC:", totalSupply);
         console.log("Total WETH Value USD:", wethValue);
         console.log("Total WBTC Value USD:", wbtcValue);
+        console.log("Times mint called:", handler.timesMintIsCalled());
 
         assert(wethValue + wbtcValue >= totalSupply);
+    }
+
+    function invariant_gettersShouldNotRevert() public view {
+        // ambil user yang dipakai handler (biasanya address ini konsisten)
+        address user = handler.getRandomUser();
+
+        // ====== SIMPLE GETTERS ======
+        dsce.getDsc();
+        dsce.getCollateralTokens();
+        dsce.getPriceFeed(weth);
+        dsce.getPriceFeed(wbtc);
+
+        // ====== ARRAY ACCESS ======
+        address[] memory collateralTokens = dsce.getCollateralTokens();
+        for (uint256 i = 0; i < collateralTokens.length; i++) {
+            dsce.getCollateralToken(i);
+            dsce.getCollateralBalanceOfUser(user, collateralTokens[i]);
+        }
+
+        // ====== ACCOUNT GETTERS ======
+        dsce.getAccountInformation(user);
+        dsce.getAccountCollateralValue(user);
+
+        // ====== PRICE / VALUE GETTERS ======
+        uint256 dummyAmount = 1e18;
+
+        dsce.getUsdValue(weth, dummyAmount);
+        dsce.getUsdValue(wbtc, dummyAmount);
+
+        dsce.getTokenAmountFromUsd(weth, 100e18);
+        dsce.getTokenAmountFromUsd(wbtc, 100e18);
+
+        // ====== PURE CALCULATION ======
+        dsce.calculateHealthFactor(0, 0);
+        dsce.calculateHealthFactor(1e18, 1e18);
     }
 }
