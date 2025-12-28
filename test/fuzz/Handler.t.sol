@@ -7,10 +7,12 @@ import {Test, console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine dsce;
     DecentralizedStableCoin dsc;
+    MockV3Aggregator public ethUsdPriceFeed;
 
     ERC20Mock weth;
     ERC20Mock wbtc;
@@ -19,6 +21,7 @@ contract Handler is Test {
     address[] public usersWithCollateralDeposited;
     address[] public users;
 
+    uint256 MAX_ORACLE_PRICE = 1_000_000e8; // $1,000,000 with 8 decimals
     uint256 MAX_DEPOSIT_SIZE = type(uint96).max;
 
     constructor(DSCEngine _engine, DecentralizedStableCoin _dsc) {
@@ -28,6 +31,9 @@ contract Handler is Test {
         address[] memory collateralTokens = dsce.getCollateralTokens();
         weth = ERC20Mock(collateralTokens[0]);
         wbtc = ERC20Mock(collateralTokens[1]);
+
+        ethUsdPriceFeed = MockV3Aggregator(dsce.getCollateralTokenPriceFeed(address(weth)));
+
         users.push(address(1));
     }
 
@@ -75,6 +81,13 @@ contract Handler is Test {
         }
         dsce.redeemCollateral(address(collateral), amountCollateral);
     }
+
+    // function updateCollateralPrice(uint96 newPrice) public {
+    //     uint256 bounded = bound(uint256(newPrice), 1, MAX_ORACLE_PRICE);
+    //     newPrice = uint96(bounded);
+
+    //     ethUsdPriceFeed.updateAnswer(int256(uint256(newPrice)));
+    // }
 
     function getRandomUser() external view returns (address) {
         return users[users.length - 1];
